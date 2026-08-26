@@ -90,12 +90,16 @@ type CodedError interface {
 var (
 	_ CodedError  = (*codedError)(nil)
 	_ StackTracer = (*codedError)(nil)
+	_ StackFramer = (*codedError)(nil)
 )
 
 type codedError struct {
 	code  Code
 	err   error
 	stack []uintptr
+	// frames is set instead of stack on a decoded error, whose stack was
+	// resolved in the process that captured it.
+	frames []Frame
 }
 
 func (c *codedError) Error() string {
@@ -108,6 +112,10 @@ func (c *codedError) ErrorCode() Code {
 
 func (c *codedError) StackTrace() []uintptr {
 	return c.stack
+}
+
+func (c *codedError) StackFrames() []Frame {
+	return c.frames
 }
 
 func (c *codedError) Format(f fmt.State, verb rune) {

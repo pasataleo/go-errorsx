@@ -41,6 +41,7 @@ func Unwrap(err error) error {
 var (
 	_ WrappedError = (*wrappedError)(nil)
 	_ StackTracer  = (*wrappedError)(nil)
+	_ StackFramer  = (*wrappedError)(nil)
 )
 
 type wrappedError struct {
@@ -67,6 +68,19 @@ func (w *wrappedError) StackTrace() []uintptr {
 	}
 	if st, ok := w.wrapped.(StackTracer); ok {
 		return st.StackTrace()
+	}
+	return nil
+}
+
+// StackFrames mirrors StackTrace for errors carrying already-resolved frames,
+// so that a decoded wrapped error still reports the stack captured in the
+// process that created it.
+func (w *wrappedError) StackFrames() []Frame {
+	if frames := stackFrames(w.current); len(frames) > 0 {
+		return frames
+	}
+	if w.wrapped != nil {
+		return stackFrames(w.wrapped)
 	}
 	return nil
 }
