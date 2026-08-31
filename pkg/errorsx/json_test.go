@@ -59,6 +59,21 @@ func TestRoundTrip_CustomCode(t *testing.T) {
 	}
 }
 
+// TestRoundTrip_NewWithPlainCause pins the code across a hop for the shape
+// that keeps it on the wrapping error alone. Every other round trip here uses
+// Wrap, which copies the cause's code, so they would pass with it lost.
+func TestRoundTrip_NewWithPlainCause(t *testing.T) {
+	err := New(InvalidArgument, errors.New("unexpected end of JSON input"), "decoding request")
+
+	got := roundTrip(t, err)
+	if code := ErrorCode(got); code != InvalidArgument {
+		t.Errorf("ErrorCode() = %q, want %q", code, InvalidArgument)
+	}
+	if got.Error() != err.Error() {
+		t.Errorf("Error() = %q, want %q", got.Error(), err.Error())
+	}
+}
+
 // The tree from the README: an annotation over a wrap over a coded error.
 func TestRoundTrip_AnnotatedWrappedCoded(t *testing.T) {
 	err := Annotate(

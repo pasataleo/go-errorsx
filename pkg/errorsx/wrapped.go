@@ -40,6 +40,7 @@ func Unwrap(err error) error {
 
 var (
 	_ WrappedError = (*wrappedError)(nil)
+	_ CodedError   = (*wrappedError)(nil)
 	_ StackTracer  = (*wrappedError)(nil)
 	_ StackFramer  = (*wrappedError)(nil)
 )
@@ -58,6 +59,22 @@ func (w *wrappedError) Error() string {
 
 func (w *wrappedError) Unwrap() error {
 	return w.wrapped
+}
+
+// ErrorCode reports the code of the error that wraps, falling back to the code
+// of the cause when the wrapping error carries none.
+//
+// A wrapped error has two children, and Unwrap can only return one of them: it
+// returns the cause, because that is the chain errors.Is and errors.As have to
+// walk to find a sentinel. That leaves the error that wraps — the one holding
+// the code New was given — off the chain, so without this method
+// ErrorCode(New(NotFound, err, "…")) would report the code of err, and a code
+// wrapped around a plain error would be lost entirely.
+func (w *wrappedError) ErrorCode() Code {
+	if coded, ok := w.current.(CodedError); ok { //nolint:errorlint // the wrapping error itself, not its chain
+		return coded.ErrorCode()
+	}
+	return ErrorCode(w.wrapped)
 }
 
 func (w *wrappedError) StackTrace() []uintptr {

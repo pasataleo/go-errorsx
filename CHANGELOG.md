@@ -12,10 +12,10 @@
 - `FormatStack` renders stacks from either `StackTracer` or `StackFramer`, so a decoded error still reports the stack captured in the process that created it
 - This package still imports nothing outside the standard library, and in particular does not import `encoding/json` — struct tags are inert, so consumers targeting TinyGo or WASM pay nothing for the new API unless they marshal an `Encoded`
 
-<!--
 ## BUG FIXES
-Issues that have been resolved.
--->
+
+- `ErrorCode` now reports the code `New` was given when the error also has a cause. A wrapped error has two children and `Unwrap` returns the cause, so the wrapping error — the one holding the code — was off the chain `errors.As` walks: `ErrorCode(New(InvalidArgument, err, "decoding request"))` reported the code of `err`, and a code wrapped around an error carrying none was lost entirely. `Wrap` was unaffected, because it takes its code from the cause, where the chain finds it anyway
+- Where a code is wrapped around another code, `ErrorCode` reports the outermost, which is the more recent judgement about the failure. `IsCode` still reports every code in the tree, as documented
 
 <!--
 ## SECURITY

@@ -31,6 +31,41 @@ func TestErrorCode_Wrapped(t *testing.T) {
 	}
 }
 
+// TestErrorCode_NewWithPlainCause covers the code New introduces itself. Wrap
+// takes its code from the cause, so the cause carries it too and the chain
+// finds it either way; a code New put on a plain error exists nowhere but the
+// wrapping error, which Unwrap does not return.
+func TestErrorCode_NewWithPlainCause(t *testing.T) {
+	err := New(InvalidArgument, errors.New("plain"), "decoding request")
+	if code := ErrorCode(err); code != InvalidArgument {
+		t.Errorf("ErrorCode(new with plain cause) = %q, want %q", code, InvalidArgument)
+	}
+}
+
+// TestErrorCode_NewWithCodedCause pins which of the two codes wins: ErrorCode
+// reports the first it finds, and the wrapping error is the more recent
+// judgement about the failure.
+func TestErrorCode_NewWithCodedCause(t *testing.T) {
+	err := New(FailedPrecondition, New(NotFound, nil, "no such user"), "loading account")
+	if code := ErrorCode(err); code != FailedPrecondition {
+		t.Errorf("ErrorCode(new with coded cause) = %q, want %q", code, FailedPrecondition)
+	}
+}
+
+// TestIsCode_NewWithCodedCause is the other half of that: ErrorCode picks one,
+// IsCode sees the whole tree.
+func TestIsCode_NewWithCodedCause(t *testing.T) {
+	err := New(FailedPrecondition, New(NotFound, nil, "no such user"), "loading account")
+	for _, code := range []Code{FailedPrecondition, NotFound} {
+		if !IsCode(err, code) {
+			t.Errorf("IsCode(%q) = false, want true", code)
+		}
+	}
+	if IsCode(err, Internal) {
+		t.Error("IsCode(internal) = true, want false")
+	}
+}
+
 func TestErrorCode_DoubleWrapped(t *testing.T) {
 	err := Wrap(Wrap(New(NotFound, nil, "not found"), "first"), "second")
 	if code := ErrorCode(err); code != NotFound {
