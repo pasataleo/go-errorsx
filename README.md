@@ -4,6 +4,9 @@ Package `errorsx` provides structured error types that compose together: error c
 
 All types integrate with the standard `errors.Is` and `errors.As` functions.
 
+Package `diagnostics` carries warnings alongside errors, for operations that find several problems and only some of
+them fatal. See [Diagnostics](#diagnostics).
+
 ## Installation
 
 ```sh
@@ -238,3 +241,108 @@ every call.
   round trip `errors.Is(err, os.ErrNotExist)` is false. Codes survive; pointer identity cannot.
 - **Annotations are attached to the node that carried them**, not flattened, so `GetAnnotations` returns the same
   merged map before and after a round trip — including the precedence rule that closer annotations win.
+
+## Diagnostics
+
+Some operations find several problems, and only some of them are fatal. Validating a configuration is one example: an
+unknown reference might be an error, while an unused setting is only worth a warning. An `error` can't express that.
+Anything returned as an error makes `if err != nil` fail, so warnings are carried alongside errors rather than inside
+them.
+
+Package `github.com/pasataleo/go-errorsx/pkg/diagnostics` has three public types:
+
+| Type | Kind | Purpose |
+|---|---|---|
+| `Diagnostic` | Interface | A single problem. Callers can implement it themselves; the package's own come from a `Builder`. |
+| `Diagnostics` | `[]Diagnostic` | The diagnostics collected from one operation. |
+| `Builder` | Struct | Constructs the package's own diagnostics. |
+
+### `Diagnostic`
+
+```go
+type Severity string
+
+const (
+    SeverityError   Severity = "error"
+    SeverityWarning Severity = "warning"
+    SeverityInfo    Severity = "info"
+)
+
+type Diagnostic interface {
+    Severity() Severity          // required
+    Summary() string             // required: a short, one-line description
+    Detail() string              // optional: a longer explanation; "" if none
+    Annotations() map[string]any // optional: nil if none; callers must not modify it
+    Cause() error                // optional: the error behind the problem; nil if none
+}
+```
+
+Annotations carry extra structured data, such as source location (file or component, line, column, snippet). The
+package gives no meaning to any key.
+
+`diagnostics.String(d)` formats any diagnostic on one line, as `<severity>: <summary>`, followed by `: <detail>` when
+there is a detail. The package's own diagnostics also implement `fmt.Stringer` using it.
+
+### Building diagnostics
+
+Each constructor takes the required severity and summary, and returns a `*Builder`:
+
+```go
+diagnostics.Error("summary")
+diagnostics.Warning("summary")
+diagnostics.Info("summary")
+
+diagnostics.Errorf("component %q not registered", name)
+diagnostics.Warningf(format, args...)
+diagnostics.Infof(format, args...)
+
+diagnostics.FromError(err) // Error severity, the error's message as summary, err as the cause
+```
+
+Adding the optional parts:
+- **`.Detail(string)` / `.Detailf(format, args...)`** set the detail.
+- **`.Annotate(key string, value any)`** adds one annotation.
+- **`.WithAnnotations(map[string]any)`** adds several. The map is copied, so later changes to it don't affect the
+  diagnostic.
+- **`.Cause(error)`** attaches the error behind the problem.
+  - The original error is kept, so `errors.Is`, `errors.As`, `ErrorCode` and `IsCode` still work on it.
+  - Annotations from anywhere in the error's tree are copied onto the diagnostic, as `GetAnnotations` returns them.
+    They never replace annotations set directly on the builder, whichever was called first.
+
+Finishing:
+- **`.Build()`** returns the `Diagnostic`.
+- **`.Append(diags Diagnostics)`** builds the diagnostic, appends it to `diags`, and returns the result, so a list can
+  be built in a single expression. `diags` can be nil.
+
+```go
+var diags diagnostics.Diagnostics
+diags = diagnostics.Errorf("component %q not registered", "Card").
+    Detailf("<Card> is used in %q, but no component %q is registered.", "Page", "Card").
+    Annotate("component", "Page").
+    Annotate("line", 12).
+    Append(diags)
+```
+
+A builder makes exactly one diagnostic, and misusing one panics, since each case is a programming mistake:
+- building with an empty summary, or calling `FromError(nil)`
+- calling `.Build()` or `.Append()` a second time on the same builder
+- calling any other builder method after it has been built
+
+### `Diagnostics`
+
+```go
+diags.HasErrors()                                          // whether any diagnostic has SeverityError
+diags.Filter(diagnostics.SeverityError, ...)               // a new set with only those severities
+diags.WithAnnotations(map[string]any{"component": "Page"}) // a new set with the annotations added to each
+```
+
+`WithAnnotations` is for adding context later. For example, a template parser can report problems without knowing
+which component it is parsing, and its caller then adds the component name to all of them. Keys a diagnostic already
+has are not overwritten. Each diagnostic is wrapped rather than copied, so the originals are kept unmodified, and ones
+the caller implemented work the same as the package's own.
+
+Diagnostics stay in the order they were added. There is no built-in sorting, so callers decide the order. Because
+`Diagnostics` is a slice, merging two sets is the built-in `append`: `diags = append(diags, other...)`.
+
+Like the rest of this module, the package depends on nothing outside the standard library and doesn't import
+`encoding/json`, so TinyGo and WASM callers can use it.

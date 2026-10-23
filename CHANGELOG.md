@@ -6,6 +6,10 @@
 - `Encoded` is a plain struct with JSON tags, so it composes into a larger document with `encoding/json` and needs no custom marshaller in either direction
 - `WithoutStacks` omits stack frames from an encoded tree, for errors that travel over a wire on every call
 - `Frame` and `StackFramer` for errors whose stack frames have already been resolved, as decoded errors are
+- `diagnostics` package for operations that find several problems, only some of them fatal: a `Diagnostic` carries a severity (`error`, `warning` or `info`), a summary, and optionally a detail, annotations and the error behind it, so warnings travel alongside errors instead of failing `if err != nil`
+- `diagnostics.Builder`, from `Error`, `Warning`, `Info`, their `f` variants and `FromError`, with `Detail`, `Annotate`, `WithAnnotations` and `Cause`, finished by `Build` or by `Append` onto a list in one expression. A cause keeps the original error, so `errors.Is`, `ErrorCode` and `IsCode` still work on it, and its tree's annotations are copied onto the diagnostic without replacing the builder's own
+- `diagnostics.Diagnostics` with `HasErrors`, `Filter` by severity, and `WithAnnotations` to add context to a whole set after the fact without overwriting keys or modifying the originals. Every diagnostic is wrapped rather than copied, so the originals are kept, including ones the caller implemented
+- `diagnostics.String` formats any diagnostic on one line, and the package's own diagnostics implement `fmt.Stringer` with it
 
 ## IMPROVEMENTS
 
