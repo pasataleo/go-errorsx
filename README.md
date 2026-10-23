@@ -102,7 +102,7 @@ type StackTracer interface {
 }
 ```
 
-Use `FormatStack` to render a stack trace to a string. It returns an empty string if the error does not implement `StackTracer` or carries no frames:
+Use `FormatStack` to render a stack trace to a string. It renders the stack of the first error in the tree that carries one, outermost first, so an error that was annotated or wrapped with `fmt.Errorf` after it was created still shows where it was created. It returns an empty string if nothing in the tree carries a stack:
 
 ```go
 fmt.Println(errorsx.FormatStack(err))

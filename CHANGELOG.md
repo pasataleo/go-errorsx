@@ -20,6 +20,7 @@
 
 - `ErrorCode` now reports the code `New` was given when the error also has a cause. A wrapped error has two children and `Unwrap` returns the cause, so the wrapping error — the one holding the code — was off the chain `errors.As` walks: `ErrorCode(New(InvalidArgument, err, "decoding request"))` reported the code of `err`, and a code wrapped around an error carrying none was lost entirely. `Wrap` was unaffected, because it takes its code from the cause, where the chain finds it anyway
 - Where a code is wrapped around another code, `ErrorCode` reports the outermost, which is the more recent judgement about the failure. `IsCode` still reports every code in the tree, as documented
+- `FormatStack` renders the stack of the first error in the tree that carries one, rather than only the error it is given. An annotated error, or one wrapped with `fmt.Errorf`, implements no stack interface itself, so `FormatStack` returned nothing for it even though the error underneath had a stack and `%+v` showed it
 
 <!--
 ## SECURITY

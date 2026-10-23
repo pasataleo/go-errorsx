@@ -26,11 +26,13 @@ type StackFramer interface {
 	StackFrames() []Frame
 }
 
-// FormatStack renders an error's stack trace to a string. It returns an empty
-// string if the error carries no stack, whether as program counters or as
-// already-resolved frames.
+// FormatStack renders an error's stack trace to a string: the stack of the
+// first error in its tree that carries one, outermost first, so an error that
+// was annotated or wrapped after it was created still shows where it was
+// created. It returns an empty string if nothing in the tree carries a stack,
+// whether as program counters or as already-resolved frames.
 func FormatStack(err error) string {
-	frames := stackFrames(err)
+	frames := firstStack(err)
 	if len(frames) == 0 {
 		return ""
 	}
@@ -39,6 +41,29 @@ func FormatStack(err error) string {
 		fmt.Fprintf(&sb, "\n    %s\n        %s:%d", frame.Function, frame.File, frame.Line)
 	}
 	return sb.String()
+}
+
+// firstStack returns the frames of the first error in err's tree that carries
+// a stack, walking from err inwards and through aggregated errors in order.
+func firstStack(err error) []Frame {
+	if err == nil {
+		return nil
+	}
+	if frames := stackFrames(err); len(frames) > 0 {
+		return frames
+	}
+
+	switch e := err.(type) { //nolint:errorlint // manually walking the error tree
+	case interface{ Unwrap() error }:
+		return firstStack(e.Unwrap())
+	case interface{ Unwrap() []error }:
+		for _, child := range e.Unwrap() {
+			if frames := firstStack(child); len(frames) > 0 {
+				return frames
+			}
+		}
+	}
+	return nil
 }
 
 // stackFrames returns resolved frames for err from either stack interface.
