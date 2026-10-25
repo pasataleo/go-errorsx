@@ -6,6 +6,8 @@
 - `WithoutStacks` leaves stack frames out of an encoded tree.
 - `Frame` and `StackFramer`, for errors whose stack frames are already resolved.
 - `diagnostics` package, for carrying warnings and info alongside errors: `Diagnostic`, `Diagnostics` and a `Builder`.
+- `Code.HTTPStatus` and `CodeForHTTPStatus` map codes to HTTP statuses and back.
+- `Code.ExitCode` and `CodeForExitCode` map codes to sysexits-style process exit statuses and back.
 
 ## IMPROVEMENTS
 

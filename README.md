@@ -22,22 +22,26 @@ err := errorsx.New(errorsx.NotFound, nil, "user not found")
 errorsx.ErrorCode(err) // errorsx.NotFound
 ```
 
-Built-in codes, ordered by HTTP status:
+Built-in codes, ordered by HTTP status, with the exit status a CLI should use (following `sysexits.h`):
 
-| Code | HTTP |
-|------|------|
-| `OK` | 200 |
-| `InvalidArgument` | 400 |
-| `Unauthenticated` | 401 |
-| `PermissionDenied` | 403 |
-| `NotFound` | 404 |
-| `AlreadyExists` | 409 |
-| `FailedPrecondition` | 412 |
-| `ResourceExhausted` | 429 |
-| `Internal` | 500 |
-| `Unknown` | 500 |
-| `Unimplemented` | 501 |
-| `Unavailable` | 503 |
+| Code | HTTP | Exit |
+|------|------|------|
+| `OK` | 200 | 0 |
+| `InvalidArgument` | 400 | 64 |
+| `Unauthenticated` | 401 | 77 |
+| `PermissionDenied` | 403 | 77 |
+| `NotFound` | 404 | 66 |
+| `AlreadyExists` | 409 | 73 |
+| `FailedPrecondition` | 412 | 65 |
+| `ResourceExhausted` | 429 | 75 |
+| `Internal` | 500 | 70 |
+| `Unknown` | 500 | 1 |
+| `Unimplemented` | 501 | 69 |
+| `Unavailable` | 503 | 69 |
+
+`Code.HTTPStatus` and `Code.ExitCode` look these up, and `CodeForHTTPStatus` and `CodeForExitCode` go the other way.
+A code with no entry is a 500 and exits 1; a status with no entry is `Unknown`. Where codes share a status, it maps back
+to one of them: 500 to `Unknown`, 69 to `Unavailable`, and 77 to `Unauthenticated`.
 
 `Code` is a `string` type, so you can define your own:
 
