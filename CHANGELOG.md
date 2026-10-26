@@ -2,12 +2,9 @@
 
 ## FEATURES
 
-- `Encode` and `Encoded.Decode` serialise an error tree to JSON and back, keeping codes, wrapping, annotations, aggregation and stacks.
-- `WithoutStacks` leaves stack frames out of an encoded tree.
-- `Frame` and `StackFramer`, for errors whose stack frames are already resolved.
+- `Encode` and `Encoded.Decode` serialise an error tree to JSON and back, keeping codes, wrapping, annotations, aggregation and stacks; `WithoutStacks` leaves the stacks out, and `Frame` and `StackFramer` carry a decoded error's resolved frames.
 - `diagnostics` package, for carrying warnings and info alongside errors: `Diagnostic`, `Diagnostics` and a `Builder`.
-- `Code.HTTPStatus` and `CodeForHTTPStatus` map codes to HTTP statuses and back.
-- `Code.ExitCode` and `CodeForExitCode` map codes to sysexits-style process exit statuses and back.
+- `Code.HTTPStatus` and `CodeForHTTPStatus` map codes to HTTP statuses and back, and `Code.ExitCode` and `CodeForExitCode` to sysexits-style exit statuses.
 
 ## IMPROVEMENTS
 
